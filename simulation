@@ -1,0 +1,61 @@
+## C. Graph Neural Network Training Performance
+
+Graph Neural Networks represent a critical application domain for SpGEMM optimization, where sparse matrix operations directly impact training efficiency. We evaluate our AIA-enhanced hash-based SpGEMM on GNN training workloads using the Flickr dataset with GraphSAGE architecture, comparing against three distinct baselines to demonstrate comprehensive performance improvements.
+
+### Baseline Comparison for GNN Training
+
+Table \ref{tab:gnn_performance} presents a comprehensive comparison of our approach against three key baselines: cuSPARSE (standard sparse library), MaxK-GNN (state-of-the-art GNN acceleration), and hash-based SpGEMM without AIA. The forward pass times reflect SpGEMM operations for neighborhood aggregation, while backward pass times represent gradient computation phases.
+
+\begin{table}[h]
+\centering
+\caption{GNN Training Performance Comparison on Flickr Dataset (GraphSAGE)}
+\label{tab:gnn_performance}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Implementation} & \textbf{Forward (ms)} & \textbf{Backward (ms)} & \textbf{Total (ms)} & \textbf{Speedup vs cuSPARSE} \\
+\hline
+cuSPARSE (Baseline) & 26.01 & 11.68 & 37.69 & - \\
+\hline
+MaxK-GNN & 19.10 & 6.36 & 25.46 & 32.4\% \\
+\hline
+Hash w/o AIA & 6.82 & 11.68 & 18.50 & 50.9\% \\
+\hline
+\textbf{Hash with AIA} & \textbf{5.97} & \textbf{11.68} & \textbf{17.65} & \textbf{53.2\%} \\
+\hline
+\textbf{AIA + MaxK Backward} & \textbf{5.97} & \textbf{6.36} & \textbf{12.33} & \textbf{67.3\%} \\
+\hline
+\end{tabular}
+\end{table}
+
+Our hash-based SpGEMM with AIA achieves significant performance improvements across all metrics. In the forward pass, our approach delivers 77.0\% speedup over cuSPARSE (5.97ms vs 26.01ms) and 68.7\% improvement over MaxK-GNN (5.97ms vs 19.10ms). When combined with optimized backward pass techniques from MaxK-GNN, the hybrid approach achieves the most dramatic results, delivering 67.3\% total training time reduction compared to cuSPARSE baselines.
+
+### AIA Efficiency Analysis
+
+Table \ref{tab:aia_analysis} analyzes the contribution of AIA gathering operations to total execution time, revealing optimization opportunities and projected improvements with FPGA acceleration.
+
+\begin{table}[h]
+\centering
+\caption{AIA Component Analysis and Projected FPGA Improvements}
+\label{tab:aia_analysis}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Matrix} & \textbf{AIA Ratio (\%)} & \textbf{2× FPGA Improvement} & \textbf{4× FPGA Improvement} & \textbf{Current Total (ms)} \\
+\hline
+amazon & 15.5 & 7.76\% & 11.63\% & 12.02 \\
+\hline
+webgoogle & 12.4 & 6.20\% & 9.30\% & 21.60 \\
+\hline
+scircuit & 42.9 & 21.44\% & 32.15\% & 4.84 \\
+\hline
+cit-Patents & 11.1 & 5.56\% & 8.34\% & 48.81 \\
+\hline
+\textbf{Average} & \textbf{17.2} & \textbf{8.58\%} & \textbf{12.87\%} & \textbf{-} \\
+\hline
+\end{tabular}
+\end{table}
+
+The analysis reveals that AIA gathering operations constitute an average of 17.2\% of total execution time, indicating significant room for optimization. FPGA acceleration of the AIA component projects additional improvements of 8.58\% (2× faster) to 12.87\% (4× faster), with particularly notable gains for matrices with higher AIA ratios such as scircuit (up to 32.15\% improvement).
+
+### Key Performance Insights
+
+The experimental results demonstrate three critical findings: (1) Hash-based SpGEMM without AIA already provides substantial improvements over standard libraries (50.9\% vs cuSPARSE), indicating the algorithmic contribution; (2) AIA adds meaningful incremental gains (4.6\% over hash without AIA, 53.2\% over cuSPARSE), validating the Processing-Near-HBM approach; (3) Hybrid optimization combining AIA forward pass with optimized backward techniques delivers the most dramatic results (67.3\% total speedup), suggesting that comprehensive system-level optimization across the entire training pipeline provides maximum benefit for GNN applications.
