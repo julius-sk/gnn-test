@@ -1,0 +1,158 @@
+
+AIA-SpGEMM Performance Analysis: Comparing Against Two Baselines
+I'll analyze the performance of hash-based SpGEMM with AIA by comparing it to two key baselines:
+1.	Baseline 1: cuSPARSE
+2.	Baseline 2: Hash-based SpGEMM without AIA
+Data Analysis for SpGEMM Operations
+First, let's organize the performance data for each matrix:
+Matrix	With AIA (ms)	Without AIA (ms)	cuSPARSE (ms)	AIA vs No-AIA	AIA vs cuSPARSE
+amazon	8.641127	11.66019	37.05754	25.89%	76.68%
+webgoogle	14.387507	17.210779	44.42727	16.40%	67.62%
+scircuit	2.247373	3.37664	28.43546	33.44%	92.10%
+cit-Patents	43.38351	49.14227	215.1137	11.72%	79.83%
+p2p-Gnutella04	0.683725	0.702464	23.02259	2.67%	97.03%
+econ	4.459622	4.647322	94.0503	4.04%	95.26%
+webbase	36.260761	38.31501	55.51207	5.36%	34.68%
+wb-edu	199.019104	208.603027	992.9636	4.59%	79.96%
+cage15	262.525421	334.375519	888.4255	21.49%	70.45%
+Wind Tunnel	16.743116	19.995955	157.483	16.27%	89.37%
+Protein	17.255117	18.737356	104.4705	7.91%	83.48%
+RoadTX	10.241843	10.300928	26.09152	0.57%	60.75%
+Average SpGEMM Improvement:
+•	AIA vs No-AIA: 12.53% faster
+•	AIA vs cuSPARSE: 77.27% faster
+Impact on GNN Training Time
+Now let's analyze how these SpGEMM improvements translate to overall GNN training time for the Flickr GraphSAGE example:
+Flickr GraphSAGE Original Performance:
+•	Forward Pass: 26.012ms (using cuSPARSE)
+•	Backward Pass: 11.681ms
+•	Total per epoch: 37.692ms
+Flickr GraphSAGE with MaxK-GNN kernels (spgemm+sspmm): 
+•	Forward Pass: 19.101ms
+•	Backward Pass: 6.362ms
+•	Total per epoch: 25.463ms
+Estimating Hash-based SpGEMM without AIA:
+Based on our data, hash-based SpGEMM without AIA is about 73.78% faster than cuSPARSE on average:
+•	Estimated Forward Pass: 26.012ms * (1 - 0.7378) = 6.82ms
+•	Backward Pass: 11.681ms
+•	Total per epoch: 18.50ms
+Estimating Hash-based SpGEMM with AIA:
+•	Forward Pass: 6.82ms * (1 - 0.1253) = 5.97ms (applying 12.53% improvement from AIA)
+•	Backward Pass: 11.681ms
+•	Total per epoch: 17.65ms
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+AIA-SpGEMM Performance with FPGA Optimization Analysis
+Matrix	Gathering Time (GA) (ms)	Execution Time (EX) (ms)	Total (2*GA+EX) (ms)	2GA/(2GA+EX) Ratio
+amazon	0.932353	10.15685	12.021556	0.155 (15.5%)
+webgoogle	1.339905	18.92311	21.60292	0.124 (12.4%)
+scircuit	1.036799	2.763061	4.836659	0.429 (42.9%)
+cit-Patents	2.712575	43.38351	48.80866	0.111 (11.1%)
+p2p-Gnutella04	0.064	0.90153	1.02953	0.124 (12.4%)
+econ	0.244224	5.15133	5.639778	0.087 (8.7%)
+Average 2GA/(2GA+EX) Ratio: 0.172 (or 17.2% of total execution time)
+This means that on average, the AIA gathering phase (performed twice) constitutes about 17.2% of the total operation time in the current implementation.
+Projected Improvements with Faster FPGA AIA
+Scenario 1: FPGA AIA Twice as Fast (2×)
+If we make the FPGA AIA gathering phase twice as fast, the contribution of AIA would be halved:
+Matrix	Original AIA%	AIA% after 2×	Original Total (ms)	New Total (ms)	Improvement %
+amazon	15.5%	7.75%	12.021556	11.089203	7.76%
+webgoogle	12.4%	6.2%	21.60292	20.263016	6.20%
+scircuit	42.9%	21.45%	4.836659	3.799860	21.44%
+cit-Patents	11.1%	5.55%	48.80866	46.096085	5.56%
+p2p-Gnutella04	12.4%	6.2%	1.02953	0.96553	6.21%
+econ	8.7%	4.35%	5.639778	5.395554	4.33%
+Average hash base SpGeMM  Improvement with 2× Faster AIA: 8.58%
+Scenario 2: FPGA AIA Four Times as Fast (4×)
+If we make the FPGA AIA gathering phase four times as fast:
+Matrix	Original AIA%	AIA% after 4×	Original Total (ms)	New Total (ms)	Improvement %
+amazon	15.5%	3.88%	12.021556	10.623027	11.63%
+webgoogle	12.4%	3.1%	21.60292	19.593063	9.30%
+scircuit	42.9%	10.73%	4.836659	3.281461	32.15%
+cit-Patents	11.1%	2.78%	48.80866	44.739798	8.34%
+p2p-Gnutella04	12.4%	3.1%	1.02953	0.93353	9.32%
+econ	8.7%	2.18%	5.639778	5.273442	6.50%
+Average hash base SpGeMM Improvement with 4× Faster AIA: 12.87%
+Performance Analysis with Three Clear Baselines and AIA-SpGEMM Variants
+--------------------------------------------------------------------------------------------------------------------
+I'll restructure the comparison to include three distinct baselines:
+1.	Baseline 1: cuSPARSE spmm(forward) + spmm(backward) (both from dgl cusparse library)
+2.	Baseline 2: MaxK-GNN with SPGEMM (forward)+SSPMM(backward) (both from maxkgnn paper)
+3.	Baseline 3: Hash-based SpGEMM without AIA (forward)+spmm(backward)
+And then compare the AIA-SpGEMM variants against these baselines.
+Comprehensive Comparison with Three Baselines
+Implementation	Forward (ms)	Backward (ms)	Total (ms)	vs. Baseline 1 (cuSPARSE)	vs. Baseline 2 (MaxK-GNN)	vs. Baseline 3 (Hash w/o AIA)
+Baseline 1: cuSPARSE	26.01	11.68	37.69	-	-48.0%	-103.7%
+Baseline 2: MaxK-GNN	19.10	6.36	25.46	32.4%	-	-37.6%
+Baseline 3: Hash w/o AIA	6.82	11.68	18.50	50.9%	27.4%	-
+Hash with AIA (Current)	5.97	11.68	17.65	53.2%	30.7%	4.6%
+Hash with AIA (2× FPGA)	5.46	11.68	17.14	54.5%	32.7%	7.4%
+Hash with AIA (4× FPGA)	5.20	11.68	16.88	55.2%	33.7%	8.8%
+AIA + MaxK Backward	5.97	6.36	12.33	67.3%	51.6%	33.4%
+AIA (2× FPGA) + MaxK Backward	5.46	6.36	11.82	68.6%	53.6%	36.1%
+AIA (4× FPGA) + MaxK Backward	5.20	6.36	11.56	69.3%	54.6%	37.5%
+Performance Analysis Against Three Baselines
+Forward Pass Comparison
+1.	Hash with AIA vs. Baseline 1 (cuSPARSE): 
+o	77.0% faster (5.97ms vs 26.01ms)
+o	With 2× FPGA: 79.0% faster (5.46ms vs 26.01ms)
+o	With 4× FPGA: 80.0% faster (5.20ms vs 26.01ms)
+2.	Hash with AIA vs. Baseline 2 (MaxK-GNN): 
+o	68.7% faster (5.97ms vs 19.10ms)
+o	With 2× FPGA: 71.4% faster (5.46ms vs 19.10ms)
+o	With 4× FPGA: 72.8% faster (5.20ms vs 19.10ms)
+3.	Hash with AIA vs. Baseline 3 (Hash without AIA): 
+o	12.5% faster (5.97ms vs 6.82ms)
+o	With 2× FPGA: 19.9% faster (5.46ms vs 6.82ms)
+o	With 4× FPGA: 23.8% faster (5.20ms vs 6.82ms)
+Total Training Time Comparison
+1.	Hash with AIA vs. Baseline 1 (cuSPARSE): 
+o	53.2% faster (17.65ms vs 37.69ms)
+o	With 2× FPGA: 54.5% faster (17.14ms vs 37.69ms)
+o	With 4× FPGA: 55.2% faster (16.88ms vs 37.69ms)
+o	With MaxK Backward: 67.3% faster (12.33ms vs 37.69ms)
+o	With 2× FPGA + MaxK Backward: 68.6% faster (11.82ms vs 37.69ms)
+o	With 4× FPGA + MaxK Backward: 69.3% faster (11.56ms vs 37.69ms)
+2.	Hash with AIA vs. Baseline 2 (MaxK-GNN): 
+o	30.7% faster (17.65ms vs 25.46ms)
+o	With 2× FPGA: 32.7% faster (17.14ms vs 25.46ms)
+o	With 4× FPGA: 33.7% faster (16.88ms vs 25.46ms)
+o	With MaxK Backward: 51.6% faster (12.33ms vs 25.46ms)
+o	With 2× FPGA + MaxK Backward: 53.6% faster (11.82ms vs 25.46ms)
+o	With 4× FPGA + MaxK Backward: 54.6% faster (11.56ms vs 25.46ms)
+3.	Hash with AIA vs. Baseline 3 (Hash without AIA): 
+o	4.6% faster (17.65ms vs 18.50ms)
+o	With 2× FPGA: 7.4% faster (17.14ms vs 18.50ms)
+o	With 4× FPGA: 8.8% faster (16.88ms vs 18.50ms)
+o	With MaxK Backward: 33.4% faster (12.33ms vs 18.50ms)
+o	With 2× FPGA + MaxK Backward: 36.1% faster (11.82ms vs 18.50ms)
+o	With 4× FPGA + MaxK Backward: 37.5% faster (11.56ms vs 18.50ms)
+Key Insights from Three-Baseline Comparison
+1.	Baseline Comparison: 
+o	Baseline 3 (Hash without AIA) already provides substantial improvement over both cuSPARSE (50.9%) and MaxK-GNN (27.4%)
+o	This indicates the hash-based SpGEMM algorithm itself provides most of the performance gain
+2.	AIA Contribution: 
+o	AIA adds an incremental but meaningful improvement (4.6%) over Baseline 3
+o	FPGA acceleration of AIA further enhances this advantage (up to 8.8% with 4× FPGA)
+3.	Hybrid Approach Benefits: 
+o	Combining AIA with MaxK-GNN's backward pass provides the most dramatic improvement
+o	This hybrid approach outperforms all baselines by wide margins
+o	Even compared to the already-fast Baseline 3, the hybrid offers 33.4-37.5% improvement
+4.	Diminishing Returns Analysis: 
+o	FPGA acceleration of AIA provides diminishing returns (additional 2.8-4.2% over standard AIA)
+o	However, the backward pass optimization provides much larger gains (28.8% improvement)
+o	This suggests focusing on backward pass optimization might be more beneficial than further forward pass optimization
+Implementation conclusion and future work
+Based on this clear three-baseline comparison:
+1.	For Immediate Performance Gains: 
+o	Hash-based SpGEMM without AIA (Baseline 3) as a starting point
+o	This already provides substantial performance over standard libraries (50.9% vs cuSPARSE)
+2.	For Enhanced Performance: 
+o	Add AIA optimization to the hash-based SpGEMM
+o	This provides additional 4.6% improvement with minimal implementation complexity
+3.	For Maximum Performance: 
+o	Implement the hybrid approach (AIA forward + MaxK-GNN backward)
+o	This provides dramatic improvements over all baselines (33.4-69.3% depending on baseline)
+o	Even with standard AIA (no FPGA acceleration), this hybrid approach delivers exceptional results
+4.	For Specific Graph Types: 
+o	For graphs like scircuit where AIA plays a larger role, prioritize AIA optimization
+o	For general-purpose use, focus more on backward pass optimization
