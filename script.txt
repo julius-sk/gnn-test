@@ -1,0 +1,30 @@
+AIA-Enhanced Hash SpGEMM for Processing Near HBMs
+Explanation
+We introduce the Acceleration of Indirect Memory Access (AIA) system, a novel Processing-Near-HBM approach for optimizing SpGEMM operations on GPUs. SpGEMM (Sparse General Matrix-Matrix Multiplication) is fundamental to numerous scientific computing and data analytics applications, particularly Graph Neural Networks, graph contraction, and Markov clustering. However, SpGEMM operations suffer from the critical "memory wall" bottleneck caused by irregular memory access patterns where data are arbitrarily accessed with poor spatial locality, resulting in frequent cache misses and high latency. Traditional sparse computations face three fundamental challenges: unknown output matrix sizes before computation begins, expensive parallel insertions at random positions in result matrices, and severe load imbalance across diverse sparsity structures that prevent effective GPU utilization.
+The core innovation of AIA lies in its Processing-Near-HBM architecture, where compute units are strategically placed between GPU cores and HBM stacks to enable efficient data gathering and transform irregular access patterns into sequential streams. Our approach leverages ranged indirect access (R=2) specifically designed to handle the two critical levels of indirection present in SpGEMM: mapping over rearranged node indices with pointer arrays of matrix A, and handling column indices of matrix A with pointer arrays of matrix B. This architecture effectively bridges the gap between processing requirements and memory access patterns, utilizing the high-bandwidth capabilities of HBM while mitigating traditional access pattern limitations through 3D integration technologies and vertically stacked memory architecture.
+Our optimized hash-based SpGEMM algorithm incorporates sophisticated row grouping strategies and adaptive thread assignment mechanisms to maximize GPU resource utilization. The algorithm employs two distinct thread assignment approaches: PWPR (Partial Warp Per Row) for rows with smaller numbers of non-zero elements, assigning four threads per row, and TBPR (Thread Block Per Row) for rows with larger numbers of non-zero elements, utilizing entire thread blocks. The system uses collision-resolving hash tables with linear probing in shared memory, with different hash table sizes and thread block configurations optimized for each row group. Multiple CUDA kernels are launched with different streams to enable parallel execution across groups, ensuring optimal load balancing and shared memory utilization throughout the computation process.
+Performance evaluation demonstrates substantial improvements across diverse applications and datasets. The system achieves an impressive 77.27% average speedup over cuSPARSE and 12.53% improvement over hash-based SpGEMM without AIA across various matrix datasets. For Graph Neural Network training applications using the Flickr dataset with GraphSAGE architecture, our approach delivers 53.2% faster training time compared to cuSPARSE baselines, with a hybrid implementation combining AIA forward pass and optimized backward techniques achieving up to 67.3% speedup while maintaining comparable accuracy. Cache performance improvements are particularly remarkable, with L1 cache hit ratios increasing from 64.41% to 75.14% in numeric phases and from 64.66% to 88.15% in symbolic phases. Graph application benchmarks show consistent performance gains, with Graph Contraction achieving up to 13.3% improvement and Markov Clustering reaching 15.8% improvement, particularly effective for iterative algorithms with multiple SpGEMM operations. Notably, AIA gathering operations constitute only 17.2% of total execution time, indicating significant optimization potential and positioning this Processing-Near-HBM approach as a powerful tool for high-performance sparse matrix computations on GPU architectures.
+
+Quiz 1
+What percentage speedup does AIA achieve over cuSPARSE on average across diverse matrix datasets?
+77.27% speedup
+Where are AIA units placed in the Processing-Near-HBM architecture?
+Between GPU cores and HBM stacks
+What L1 cache hit ratio improvement does AIA achieve in symbolic phases?
+From 64.66% to 88.15%
+What are the two thread assignment strategies used in the hash-based SpGEMM algorithm?
+PWPR (Partial Warp Per Row) and TBPR (Thread Block Per Row)
+What percentage of total execution time do AIA gathering operations constitute?
+17.2%
+
+Quiz 2
+For GNN training on Flickr dataset, what speedup does the hybrid AIA approach achieve over cuSPARSE baseline?
+67.3% speedup
+What performance improvement does Wind Tunnel dataset show for GFLOPS comparison?
+2.5x performance boost (from 5.5 to 14 GFLOPS)
+In Markov Clustering application, what is the highest improvement percentage achieved?
+15.8% improvement (Wind Tunnel dataset)
+What are the three main phases of the optimized SpGEMM algorithm?
+Row grouping, non-zero element counting, and output matrix calculation
+What speedup range does MaxK-GNN achieve over DGL frameworks for GNN applications?
+3.22×-4.24× speedup
