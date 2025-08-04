@@ -29,106 +29,89 @@ df['PruningAIA_over_Baseline'] = ((df['CuSparse'] - df['With_AIA']) / df['CuSpar
 fig, ax = plt.subplots(figsize=(16, 10))
 
 # Define colors and new labels
-colors = ['#3498db', '#2ecc71']  # Blue for Pruning+AIA over Pruning, Green for Pruning+AIA over Baseline
+colors = ['#3498db', '#2ecc71']  # Blue and Green
 labels = ['Pruning+AIA over Pruning', 'Pruning+AIA over Baseline']
 
-# Create x positions for bars
+# Create y positions for bars (horizontal)
 datasets = ['Reddit', 'Protein', 'Flickr', 'Yelp']
 models = ['GCN', 'GIN', 'SAGE']
-n_datasets = len(datasets)
-n_models = len(models)
-n_conditions = 2  # Only two bars now
+n_conditions = 2
 
-# Width of bars and spacing - increased bar width
-bar_width = 0.35  # Increased bar width
+bar_height = 0.35
 group_spacing = 0.2
 dataset_spacing = 1.5
 
-# Calculate x positions
-x_positions = []
-labels_positions = []
-dataset_labels = []
+# Calculate y positions
+y_positions = []
+label_positions = []
+y_labels = []
 
 for i, dataset in enumerate(datasets):
-    dataset_start = i * (n_models * n_conditions * bar_width + group_spacing + dataset_spacing)
+    dataset_start = i * (len(models) * n_conditions * bar_height + group_spacing + dataset_spacing)
     
     for j, model in enumerate(models):
-        model_start = dataset_start + j * (n_conditions * bar_width + group_spacing)
-        
-        # Store center position for model label
-        model_center = model_start + (n_conditions * bar_width) / 2
-        labels_positions.append(model_center)
-        dataset_labels.append(model)  # Only model name, dataset will be added separately
+        model_start = dataset_start + j * (n_conditions * bar_height + group_spacing)
+
+        center = model_start + (n_conditions * bar_height) / 2
+        label_positions.append(center)
+        y_labels.append(f"{dataset} - {model}")
         
         for k in range(n_conditions):
-            x_pos = model_start + k * bar_width
-            x_positions.append(x_pos)
+            y_pos = model_start + k * bar_height
+            y_positions.append(y_pos)
 
-# Prepare data for plotting
-x_pos_idx = 0
+# Plot bars
+y_pos_idx = 0
 for i, dataset in enumerate(datasets):
     for j, model in enumerate(models):
         row = df[(df['Dataset'] == dataset) & (df['Model'] == model)]
-        
         values = [row['PruningAIA_over_Pruning'].iloc[0], row['PruningAIA_over_Baseline'].iloc[0]]
         
         for k, (value, color, label) in enumerate(zip(values, colors, labels)):
-            x_pos = x_positions[x_pos_idx + k]
-            bar = ax.bar(x_pos, value, bar_width, color=color, 
-                        label=label if i == 0 and j == 0 else "", 
-                        alpha=0.8, edgecolor='black', linewidth=0.5)
+            y_pos = y_positions[y_pos_idx + k]
+            ax.barh(y_pos, value, height=bar_height, color=color,
+                    label=label if i == 0 and j == 0 else "", 
+                    alpha=0.8, edgecolor='black', linewidth=0.5)
             
-            # Add value labels on top of bars with larger font
-            ax.text(x_pos, value + 1, f'{value:.1f}%', ha='center', va='bottom', 
-                   fontsize=12, fontweight='bold')
+            # Add value labels to the right of bars
+            ax.text(value + 1, y_pos, f'{value:.1f}%', va='center', fontsize=11, fontweight='bold')
         
-        x_pos_idx += n_conditions
+        y_pos_idx += n_conditions
 
-# Customize the plot with larger fonts
-ax.set_xlabel('Performance Improvement (%)', fontsize=16, fontweight='bold')
+# Set axis labels and title
 ax.set_ylabel('Dataset and Model', fontsize=16, fontweight='bold')
-ax.set_title('GNN Training Time Improvement Ratio Comparison\nAcross Datasets and Models', 
+ax.set_xlabel('Performance Improvement (%)', fontsize=16, fontweight='bold')
+ax.set_title('GNN Training Time Improvement Ratio Comparison\nAcross Datasets and Models',
              fontsize=18, fontweight='bold', pad=25)
 
-# Set y-axis labels - only show model names
-ax.set_yticks(labels_positions)
-ax.set_yticklabels(dataset_labels, fontsize=12)
+# Y-axis ticks and labels
+ax.set_yticks(label_positions)
+ax.set_yticklabels(y_labels, fontsize=12)
 
-# Add legend in top right with larger font
+# Legend
 ax.legend(loc='lower right', fontsize=14, framealpha=0.9)
 
-# Add grid for better readability
+# Gridlines
 ax.grid(True, axis='x', alpha=0.3, linestyle='--')
 
-# Set x-axis limits with more space
+# Set x-axis limits
 max_improvement = max(df['PruningAIA_over_Baseline'].max(), df['PruningAIA_over_Pruning'].max())
 ax.set_xlim(0, max_improvement * 1.2)
 
-# Add vertical line at 0% for reference
+# Vertical line at 0%
 ax.axvline(x=0, color='black', linestyle='-', alpha=0.8, linewidth=1)
 
-# Add horizontal lines to separate datasets
+# Dataset separation lines
 for i in range(1, len(datasets)):
-    sep_y = (labels_positions[(i-1)*3 + 2] + labels_positions[i*3]) / 2
+    sep_y = (label_positions[(i-1)*3 + 2] + label_positions[i*3]) / 2
     ax.axhline(y=sep_y, color='gray', linestyle='-', alpha=0.5, linewidth=1)
-
-# Add dataset labels on the left - only once per dataset
-dataset_centers = [1, 4, 7, 10]  # Center of each group of 3 models
-for i, (center_idx, dataset) in enumerate(zip(dataset_centers, datasets)):
-    center_y = labels_positions[center_idx]
-    ax.text(-max_improvement * 0.08, center_y, dataset, ha='right', va='center',
-            fontsize=14, fontweight='bold', 
-            bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8))
-
-# Increase tick label sizes
-ax.tick_params(axis='y', labelsize=12)
-ax.tick_params(axis='x', labelsize=12)
 
 # Improve layout
 plt.tight_layout()
 
 # Show the plot
 plt.show()
+
 
 # Save the plot
 plt.savefig('gnn_training_time_improvement_ratio_modified.png', dpi=300, bbox_inches='tight', 
