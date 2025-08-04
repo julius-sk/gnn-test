@@ -18,12 +18,12 @@ data = {
 
 df = pd.DataFrame(data)
 
-# Set up the plot
-fig, ax = plt.subplots(figsize=(14, 8))
+# Set up the plot with larger figure
+fig, ax = plt.subplots(figsize=(16, 10))
 
-# Define colors
-colors = ['#3498db', '#2ecc71', '#e74c3c']  # Blue, Green, Red
-labels = ['Without AIA', 'With AIA', 'CuSparse']
+# Define colors and labels in new order: CuSparse -> Baseline, Without AIA -> Pruning, With AIA -> Pruning+AIA
+colors = ['#e74c3c', '#3498db', '#2ecc71']  # Red, Blue, Green
+labels = ['Baseline', 'Pruning', 'Pruning+AIA']
 
 # Create x positions for bars
 datasets = ['Reddit', 'Protein', 'Flickr', 'Yelp']
@@ -32,10 +32,10 @@ n_datasets = len(datasets)
 n_models = len(models)
 n_conditions = 3
 
-# Width of bars and spacing
-bar_width = 0.32
-group_spacing = 0.4
-dataset_spacing = 1.0
+# Width of bars and spacing - increased bar width
+bar_width = 0.25  # Increased from 0.08
+group_spacing = 0.15
+dataset_spacing = 1.2
 
 # Calculate x positions
 x_positions = []
@@ -51,44 +51,41 @@ for i, dataset in enumerate(datasets):
         # Store center position for model label
         model_center = model_start + (n_conditions * bar_width) / 2
         labels_positions.append(model_center)
-        dataset_labels.append(f'{dataset}\n{model}')
+        dataset_labels.append(model)  # Only model name, dataset will be added separately
         
         for k in range(n_conditions):
             x_pos = model_start + k * bar_width
             x_positions.append(x_pos)
 
-# Prepare data for plotting
+# Prepare data for plotting in new order: CuSparse, Without_AIA, With_AIA
 x_pos_idx = 0
 for i, dataset in enumerate(datasets):
     for j, model in enumerate(models):
         row = df[(df['Dataset'] == dataset) & (df['Model'] == model)]
         
-        values = [row['Without_AIA'].iloc[0], row['With_AIA'].iloc[0], row['CuSparse'].iloc[0]]
+        # New order: CuSparse -> Baseline, Without AIA -> Pruning, With AIA -> Pruning+AIA
+        values = [row['CuSparse'].iloc[0], row['Without_AIA'].iloc[0], row['With_AIA'].iloc[0]]
         
         for k, (value, color, label) in enumerate(zip(values, colors, labels)):
             x_pos = x_positions[x_pos_idx + k]
             bar = ax.bar(x_pos, value, bar_width, color=color, 
                         label=label if i == 0 and j == 0 else "", 
                         alpha=0.8, edgecolor='black', linewidth=0.5)
-            
-            # Add value labels on top of bars
-            # ax.text(x_pos, value + max(df[['Without_AIA', 'With_AIA', 'CuSparse']].max()) * 0.01, 
-            #        f'{value:.1f}', ha='center', va='bottom', fontsize=8, rotation=0)
         
         x_pos_idx += n_conditions
 
-# Customize the plot
-ax.set_ylabel('Training Time per Epoch (ms)', fontsize=12, fontweight='bold')
-ax.set_xlabel('Dataset and Model', fontsize=12, fontweight='bold')
+# Customize the plot with larger fonts
+ax.set_ylabel('Training Time per Epoch (ms)', fontsize=16, fontweight='bold')  # Increased font size
+ax.set_xlabel('Dataset and Model', fontsize=16, fontweight='bold')  # Increased font size
 ax.set_title('GNN Training Time Performance Comparison\nAcross Datasets and Models', 
-             fontsize=14, fontweight='bold', pad=20)
+             fontsize=18, fontweight='bold', pad=25)  # Increased font size
 
-# Set x-axis labels
+# Set x-axis labels - only show model names
 ax.set_xticks(labels_positions)
-ax.set_xticklabels(dataset_labels, fontsize=10)
+ax.set_xticklabels(dataset_labels, fontsize=12)
 
-# Add legend
-ax.legend(loc='upper left', fontsize=10, framealpha=0.9)
+# Add legend in top right with larger font
+ax.legend(loc='upper right', fontsize=14, framealpha=0.9)  # Changed to upper right and increased font size
 
 # Add grid for better readability
 ax.grid(True, axis='y', alpha=0.3, linestyle='--')
@@ -101,42 +98,34 @@ for i in range(1, len(datasets)):
     sep_x = (labels_positions[(i-1)*3 + 2] + labels_positions[i*3]) / 2
     ax.axvline(x=sep_x, color='gray', linestyle='-', alpha=0.5, linewidth=1)
 
+# Add dataset labels at the top - only once per dataset
+dataset_centers = [1, 4, 7, 10]  # Center of each group of 3 models
+max_y = max(df[['Without_AIA', 'With_AIA', 'CuSparse']].max()) * 1.1
+for i, (center_idx, dataset) in enumerate(zip(dataset_centers, datasets)):
+    center_x = labels_positions[center_idx]
+    ax.text(center_x, max_y, dataset, ha='center', va='center',
+            fontsize=14, fontweight='bold', 
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8))
+
+# Increase tick label sizes
+ax.tick_params(axis='x', labelsize=12)
+ax.tick_params(axis='y', labelsize=12)
+
 # Improve layout
 plt.tight_layout()
 
-# Add performance improvement annotations
-improvement_text = []
-for i, dataset in enumerate(datasets):
-    for j, model in enumerate(models):
-        row = df[(df['Dataset'] == dataset) & (df['Model'] == model)]
-        without_aia = row['Without_AIA'].iloc[0]
-        with_aia = row['With_AIA'].iloc[0]
-        improvement = ((without_aia - with_aia) / without_aia) * 100
-        improvement_text.append(f'{improvement:.1f}%')
-
-# Add a text box with summary statistics
-# summary_text = f"""Performance Summary:
-# • AIA provides 10-20% training time reduction
-# • Best improvement: SAGE on Reddit ({improvement_text[2]})
-# • Consistent benefits across all models and datasets
-# • CuSparse without pruning shows 2x slower performance"""
-
-
-# ax.text(0.02, 0.98, summary_text, transform=ax.transAxes, fontsize=9,
-#         verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
-
 # Show the plot
 plt.show()
-plt.savefig('GNN_training_time_per_epoch.png', dpi=300, bbox_inches='tight', 
+plt.savefig('GNN_training_time_per_epoch_modified.png', dpi=300, bbox_inches='tight', 
             facecolor='white', edgecolor='none')
 
 # Print numerical comparison table
 print("\nDetailed Performance Comparison:")
 print("="*80)
-print(f"{'Dataset':<10} {'Model':<6} {'Without AIA':<12} {'With AIA':<10} {'CuSparse':<10} {'Improvement':<12}")
+print(f"{'Dataset':<10} {'Model':<6} {'Baseline':<12} {'Pruning':<12} {'Pruning+AIA':<12} {'Improvement':<12}")
 print("="*80)
 
 for _, row in df.iterrows():
     improvement = ((row['Without_AIA'] - row['With_AIA']) / row['Without_AIA']) * 100
-    print(f"{row['Dataset']:<10} {row['Model']:<6} {row['Without_AIA']:<12.1f} "
-          f"{row['With_AIA']:<10.1f} {row['CuSparse']:<10.1f} {improvement:<12.1f}%")
+    print(f"{row['Dataset']:<10} {row['Model']:<6} {row['CuSparse']:<12.1f} "
+          f"{row['Without_AIA']:<12.1f} {row['With_AIA']:<12.1f} {improvement:<12.1f}%")
