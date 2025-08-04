@@ -19,115 +19,138 @@ data = {
 df = pd.DataFrame(data)
 
 # Calculate improvement percentages
-# AIA over Without AIA = (Without_AIA - With_AIA) / Without_AIA * 100
-df['AIA_over_NoAIA'] = ((df['Without_AIA'] - df['With_AIA']) / df['Without_AIA']) * 100
+# Pruning+AIA over Pruning = (Without_AIA - With_AIA) / Without_AIA * 100
+df['PruningAIA_over_Pruning'] = ((df['Without_AIA'] - df['With_AIA']) / df['Without_AIA']) * 100
 
-# AIA over CuSparse = (CuSparse - With_AIA) / CuSparse * 100
-df['AIA_over_CuSparse'] = ((df['CuSparse'] - df['With_AIA']) / df['CuSparse']) * 100
+# Pruning+AIA over Baseline = (CuSparse - With_AIA) / CuSparse * 100
+df['PruningAIA_over_Baseline'] = ((df['CuSparse'] - df['With_AIA']) / df['CuSparse']) * 100
 
 # Set up the plot with larger figure size
 fig, ax = plt.subplots(figsize=(16, 10))
 
-# Define colors
-colors = ['#e74c3c', '#2ecc71']  # Red for AIA over Without AIA, Green for AIA over CuSparse
-labels = ['AIA over Without AIA', 'AIA over CuSparse']
+# Define colors and new labels
+colors = ['#3498db', '#2ecc71']  # Blue for Pruning+AIA over Pruning, Green for Pruning+AIA over Baseline
+labels = ['Pruning+AIA over Pruning', 'Pruning+AIA over Baseline']
 
 # Create x positions for bars
-n_configs = len(df)  # 12 configurations
-bar_width = 0.35     # Larger bar width
-x_positions = np.arange(n_configs)
+datasets = ['Reddit', 'Protein', 'Flickr', 'Yelp']
+models = ['GCN', 'GIN', 'SAGE']
+n_datasets = len(datasets)
+n_models = len(models)
+n_conditions = 2  # Only two bars now
 
-# Create the two sets of bars
-bars1 = ax.bar(x_positions - bar_width/2, df['AIA_over_NoAIA'], bar_width, 
-               color=colors[0], alpha=0.8, edgecolor='black', linewidth=1,
-               label=labels[0])
+# Width of bars and spacing - increased bar width
+bar_width = 0.35  # Increased bar width
+group_spacing = 0.2
+dataset_spacing = 1.5
 
-bars2 = ax.bar(x_positions + bar_width/2, df['AIA_over_CuSparse'], bar_width,
-               color=colors[1], alpha=0.8, edgecolor='black', linewidth=1,
-               label=labels[1])
+# Calculate x positions
+x_positions = []
+labels_positions = []
+dataset_labels = []
 
-# Add value labels on top of bars with larger font
-for bars, values in [(bars1, df['AIA_over_NoAIA']), (bars2, df['AIA_over_CuSparse'])]:
-    for bar, value in zip(bars, values):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1, 
-               f'{value:.1f}%', ha='center', va='bottom', 
-               fontsize=12, fontweight='bold')
+for i, dataset in enumerate(datasets):
+    dataset_start = i * (n_models * n_conditions * bar_width + group_spacing + dataset_spacing)
+    
+    for j, model in enumerate(models):
+        model_start = dataset_start + j * (n_conditions * bar_width + group_spacing)
+        
+        # Store center position for model label
+        model_center = model_start + (n_conditions * bar_width) / 2
+        labels_positions.append(model_center)
+        dataset_labels.append(model)  # Only model name, dataset will be added separately
+        
+        for k in range(n_conditions):
+            x_pos = model_start + k * bar_width
+            x_positions.append(x_pos)
+
+# Prepare data for plotting
+x_pos_idx = 0
+for i, dataset in enumerate(datasets):
+    for j, model in enumerate(models):
+        row = df[(df['Dataset'] == dataset) & (df['Model'] == model)]
+        
+        values = [row['PruningAIA_over_Pruning'].iloc[0], row['PruningAIA_over_Baseline'].iloc[0]]
+        
+        for k, (value, color, label) in enumerate(zip(values, colors, labels)):
+            x_pos = x_positions[x_pos_idx + k]
+            bar = ax.bar(x_pos, value, bar_width, color=color, 
+                        label=label if i == 0 and j == 0 else "", 
+                        alpha=0.8, edgecolor='black', linewidth=0.5)
+            
+            # Add value labels on top of bars with larger font
+            ax.text(x_pos, value + 1, f'{value:.1f}%', ha='center', va='bottom', 
+                   fontsize=12, fontweight='bold')
+        
+        x_pos_idx += n_conditions
 
 # Customize the plot with larger fonts
-ax.set_ylabel('Performance Improvement (%)', fontsize=16, fontweight='bold')
-ax.set_xlabel('Dataset and Model Configuration', fontsize=16, fontweight='bold')
-ax.set_title('AIA Performance Improvement Comparison\n(AIA over Without AIA vs AIA over CuSparse)', 
+ax.set_xlabel('Performance Improvement (%)', fontsize=16, fontweight='bold')
+ax.set_ylabel('Dataset and Model', fontsize=16, fontweight='bold')
+ax.set_title('GNN Training Time Improvement Ratio Comparison\nAcross Datasets and Models', 
              fontsize=18, fontweight='bold', pad=25)
 
-# Create x-axis labels
-x_labels = [f'{row["Dataset"]}\n{row["Model"]}' for _, row in df.iterrows()]
-ax.set_xticks(x_positions)
-ax.set_xticklabels(x_labels, fontsize=12, fontweight='bold')
+# Set y-axis labels - only show model names
+ax.set_yticks(labels_positions)
+ax.set_yticklabels(dataset_labels, fontsize=12)
 
-# Add legend with larger font
-ax.legend(loc='upper left', fontsize=14, framealpha=0.9)
+# Add legend in top right with larger font
+ax.legend(loc='lower right', fontsize=14, framealpha=0.9)
 
 # Add grid for better readability
-ax.grid(True, axis='y', alpha=0.3, linestyle='--')
+ax.grid(True, axis='x', alpha=0.3, linestyle='--')
 
-# Set y-axis limits with more space
-max_improvement = max(df['AIA_over_CuSparse'].max(), df['AIA_over_NoAIA'].max())
-ax.set_ylim(0, max_improvement * 1.2)
+# Set x-axis limits with more space
+max_improvement = max(df['PruningAIA_over_Baseline'].max(), df['PruningAIA_over_Pruning'].max())
+ax.set_xlim(0, max_improvement * 1.2)
 
-# Add horizontal line at 0% for reference
-ax.axhline(y=0, color='black', linestyle='-', alpha=0.8, linewidth=1)
+# Add vertical line at 0% for reference
+ax.axvline(x=0, color='black', linestyle='-', alpha=0.8, linewidth=1)
 
-# Add vertical lines to separate datasets (after every 3 configurations)
-for i in [2.5, 5.5, 8.5]:
-    ax.axvline(x=i, color='gray', linestyle='-', alpha=0.7, linewidth=2)
+# Add horizontal lines to separate datasets
+for i in range(1, len(datasets)):
+    sep_y = (labels_positions[(i-1)*3 + 2] + labels_positions[i*3]) / 2
+    ax.axhline(y=sep_y, color='gray', linestyle='-', alpha=0.5, linewidth=1)
 
-# Add dataset group labels at the top
-dataset_centers = [1, 4, 7, 10]  # Center of each group of 3
-dataset_names = ['Reddit', 'Protein', 'Flickr', 'Yelp']
-for center, name in zip(dataset_centers, dataset_names):
-    ax.text(center, max_improvement * 1.15, name, ha='center', va='center',
-            fontsize=16, fontweight='bold', 
+# Add dataset labels on the left - only once per dataset
+dataset_centers = [1, 4, 7, 10]  # Center of each group of 3 models
+for i, (center_idx, dataset) in enumerate(zip(dataset_centers, datasets)):
+    center_y = labels_positions[center_idx]
+    ax.text(-max_improvement * 0.15, center_y, dataset, ha='center', va='center',
+            fontsize=14, fontweight='bold', rotation=90,
             bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8))
 
 # Increase tick label sizes
-ax.tick_params(axis='x', labelsize=12)
 ax.tick_params(axis='y', labelsize=12)
+ax.tick_params(axis='x', labelsize=12)
 
 # Improve layout
 plt.tight_layout()
 
-# Add performance summary text box with larger font
-# summary_stats = f"""Performance Summary:
-# • AIA over Without AIA: {df['AIA_over_NoAIA'].mean():.1f}% average improvement
-# • AIA over CuSparse: {df['AIA_over_CuSparse'].mean():.1f}% average improvement
-# • Best AIA vs baseline: {df.loc[df['AIA_over_NoAIA'].idxmax(), 'Dataset']} {df.loc[df['AIA_over_NoAIA'].idxmax(), 'Model']} ({df['AIA_over_NoAIA'].max():.1f}%)
-# • Best AIA vs CuSparse: {df.loc[df['AIA_over_CuSparse'].idxmax(), 'Dataset']} {df.loc[df['AIA_over_CuSparse'].idxmax(), 'Model']} ({df['AIA_over_CuSparse'].max():.1f}%)"""
-
-# ax.text(0.02, 0.98, summary_stats, transform=ax.transAxes, fontsize=12,
-#         verticalalignment='top', bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
-
 # Show the plot
 plt.show()
 
+# Save the plot
+plt.savefig('gnn_training_time_improvement_ratio_modified.png', dpi=300, bbox_inches='tight', 
+            facecolor='white', edgecolor='none')
+plt.savefig('gnn_training_time_improvement_ratio_modified.pdf', bbox_inches='tight', 
+            facecolor='white', edgecolor='none')
+
 # Print detailed comparison table
-print("\nAIA Improvement Percentage Analysis:")
+print("\nPruning+AIA Improvement Percentage Analysis:")
 print("="*100)
-print(f"{'Dataset':<10} {'Model':<6} {'AIA over':<15} {'AIA over':<15} {'Difference':<15}")
-print(f"{'':^10} {'':^6} {'Without AIA (%)':<15} {'CuSparse (%)':<15} {'(CuSparse-NoAIA)':<15}")
+print(f"{'Dataset':<10} {'Model':<6} {'Pruning+AIA over':<18} {'Pruning+AIA over':<18} {'Difference':<15}")
+print(f"{'':^10} {'':^6} {'Pruning (%)':<18} {'Baseline (%)':<18} {'(Baseline-Pruning)':<15}")
 print("="*100)
 
 for _, row in df.iterrows():
-    difference = row['AIA_over_CuSparse'] - row['AIA_over_NoAIA']
-    print(f"{row['Dataset']:<10} {row['Model']:<6} {row['AIA_over_NoAIA']:<15.1f} "
-          f"{row['AIA_over_CuSparse']:<15.1f} {difference:<15.1f}")
+    difference = row['PruningAIA_over_Baseline'] - row['PruningAIA_over_Pruning']
+    print(f"{row['Dataset']:<10} {row['Model']:<6} {row['PruningAIA_over_Pruning']:<18.1f} "
+          f"{row['PruningAIA_over_Baseline']:<18.1f} {difference:<15.1f}")
 
 print("\n" + "="*100)
 print("Summary Statistics:")
-print(f"Average AIA improvement over Without AIA: {df['AIA_over_NoAIA'].mean():.1f}%")
-print(f"Average AIA improvement over CuSparse: {df['AIA_over_CuSparse'].mean():.1f}%")
-print(f"Best AIA vs Without AIA: {df.loc[df['AIA_over_NoAIA'].idxmax(), 'Dataset']} {df.loc[df['AIA_over_NoAIA'].idxmax(), 'Model']} with {df['AIA_over_NoAIA'].max():.1f}% improvement")
-print(f"Best AIA vs CuSparse: {df.loc[df['AIA_over_CuSparse'].idxmax(), 'Dataset']} {df.loc[df['AIA_over_CuSparse'].idxmax(), 'Model']} with {df['AIA_over_CuSparse'].max():.1f}% improvement")
-plt.savefig('gnn_training_time_improvement_ratio.png', dpi=300, bbox_inches='tight', 
-            facecolor='white', edgecolor='none')
-plt.savefig('gnn_training_time_improvement_ratio.pdf', bbox_inches='tight', 
-            facecolor='white', edgecolor='none')
+print(f"Average Pruning+AIA improvement over Pruning: {df['PruningAIA_over_Pruning'].mean():.1f}%")
+print(f"Average Pruning+AIA improvement over Baseline: {df['PruningAIA_over_Baseline'].mean():.1f}%")
+print(f"Best Pruning+AIA vs Pruning: {df.loc[df['PruningAIA_over_Pruning'].idxmax(), 'Dataset']} {df.loc[df['PruningAIA_over_Pruning'].idxmax(), 'Model']} with {df['PruningAIA_over_Pruning'].max():.1f}% improvement")
+print(f"Best Pruning+AIA vs Baseline: {df.loc[df['PruningAIA_over_Baseline'].idxmax(), 'Dataset']} {df.loc[df['PruningAIA_over_Baseline'].idxmax(), 'Model']} with {df['PruningAIA_over_Baseline'].max():.1f}% improvement")
