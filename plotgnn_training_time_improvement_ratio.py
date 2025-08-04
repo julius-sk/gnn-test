@@ -25,115 +25,166 @@ df['PruningAIA_over_Pruning'] = ((df['Without_AIA'] - df['With_AIA']) / df['With
 # Pruning+AIA over Baseline = (CuSparse - With_AIA) / CuSparse * 100
 df['PruningAIA_over_Baseline'] = ((df['CuSparse'] - df['With_AIA']) / df['CuSparse']) * 100
 
-# Set up the plot with larger figure size
-fig, ax = plt.subplots(figsize=(16, 10))
-
-# Define colors and new labels
-colors = ['#3498db', '#2ecc71']  # Blue and Green
-labels = ['Pruning+AIA over Pruning', 'Pruning+AIA over Baseline']
-
-# Create y positions for bars (horizontal)
+# Create x positions for bars
 datasets = ['Reddit', 'Protein', 'Flickr', 'Yelp']
 models = ['GCN', 'GIN', 'SAGE']
-n_conditions = 2
+n_datasets = len(datasets)
+n_models = len(models)
 
-bar_height = 0.35
-group_spacing = 0.2
-dataset_spacing = 1.5
+# Width of bars and spacing
+bar_width = 0.25
+group_spacing = 0.15
+dataset_spacing = 1.2
 
-# Calculate y positions
-y_positions = []
-label_positions = []
-y_labels = []
+# Calculate x positions
+x_positions = []
+labels_positions = []
 
 for i, dataset in enumerate(datasets):
-    dataset_start = i * (len(models) * n_conditions * bar_height + group_spacing + dataset_spacing)
+    dataset_start = i * (n_models * bar_width + group_spacing + dataset_spacing)
     
     for j, model in enumerate(models):
-        model_start = dataset_start + j * (n_conditions * bar_height + group_spacing)
-
-        center = model_start + (n_conditions * bar_height) / 2
-        label_positions.append(center)
-        y_labels.append(f"{dataset} - {model}")
+        x_pos = dataset_start + j * bar_width
+        x_positions.append(x_pos)
         
-        for k in range(n_conditions):
-            y_pos = model_start + k * bar_height
-            y_positions.append(y_pos)
+    # Store center position for dataset label
+    dataset_center = dataset_start + (n_models * bar_width) / 2
+    labels_positions.append(dataset_center)
 
-# Plot bars
-y_pos_idx = 0
+# Figure 1: Pruning+AIA over Pruning
+fig1, ax1 = plt.subplots(figsize=(14, 8))
+
+# Plot bars for Pruning+AIA over Pruning
+colors_models = ['#3498db', '#e74c3c', '#2ecc71']  # Blue, Red, Green for GCN, GIN, SAGE
+x_pos_idx = 0
+
 for i, dataset in enumerate(datasets):
     for j, model in enumerate(models):
         row = df[(df['Dataset'] == dataset) & (df['Model'] == model)]
-        values = [row['PruningAIA_over_Pruning'].iloc[0], row['PruningAIA_over_Baseline'].iloc[0]]
+        value = row['PruningAIA_over_Pruning'].iloc[0]
         
-        for k, (value, color, label) in enumerate(zip(values, colors, labels)):
-            y_pos = y_positions[y_pos_idx + k]
-            ax.barh(y_pos, value, height=bar_height, color=color,
-                    label=label if i == 0 and j == 0 else "", 
-                    alpha=0.8, edgecolor='black', linewidth=0.5)
-            
-            # Add value labels to the right of bars
-            ax.text(value + 1, y_pos, f'{value:.1f}%', va='center', fontsize=11, fontweight='bold')
+        x_pos = x_positions[x_pos_idx]
+        bar = ax1.bar(x_pos, value, bar_width, color=colors_models[j], 
+                     label=model if i == 0 else "", 
+                     alpha=0.8, edgecolor='black', linewidth=0.5)
         
-        y_pos_idx += n_conditions
+        # Add value labels on top of bars
+        ax1.text(x_pos, value + 0.5, f'{value:.1f}%', ha='center', va='bottom', 
+               fontsize=11, fontweight='bold')
+        
+        x_pos_idx += 1
 
-# Set axis labels and title
-ax.set_ylabel('Dataset and Model', fontsize=16, fontweight='bold')
-ax.set_xlabel('Performance Improvement (%)', fontsize=16, fontweight='bold')
-ax.set_title('GNN Training Time Improvement Ratio Comparison\nAcross Datasets and Models',
-             fontsize=18, fontweight='bold', pad=25)
+# Customize Figure 1
+ax1.set_ylabel('Performance Improvement (%)', fontsize=14, fontweight='bold')
+ax1.set_xlabel('Dataset', fontsize=14, fontweight='bold')
+ax1.set_title('Pruning+AIA Improvement over Pruning\nAcross Datasets and Models', 
+             fontsize=16, fontweight='bold', pad=20)
 
-# Y-axis ticks and labels
-ax.set_yticks(label_positions)
-ax.set_yticklabels(y_labels, fontsize=12)
+# Set x-axis labels
+ax1.set_xticks(labels_positions)
+ax1.set_xticklabels(datasets, fontsize=12, fontweight='bold')
 
-# Legend
-ax.legend(loc='lower right', fontsize=14, framealpha=0.9)
+# Add legend
+ax1.legend(loc='upper right', fontsize=12, framealpha=0.9, title='Model')
 
-# Gridlines
-ax.grid(True, axis='x', alpha=0.3, linestyle='--')
+# Add grid
+ax1.grid(True, axis='y', alpha=0.3, linestyle='--')
 
-# Set x-axis limits
-max_improvement = max(df['PruningAIA_over_Baseline'].max(), df['PruningAIA_over_Pruning'].max())
-ax.set_xlim(0, max_improvement * 1.2)
+# Set y-axis limits
+max_val1 = df['PruningAIA_over_Pruning'].max()
+ax1.set_ylim(0, max_val1 * 1.15)
 
-# Vertical line at 0%
-ax.axvline(x=0, color='black', linestyle='-', alpha=0.8, linewidth=1)
-
-# Dataset separation lines
+# Add vertical lines to separate datasets
 for i in range(1, len(datasets)):
-    sep_y = (label_positions[(i-1)*3 + 2] + label_positions[i*3]) / 2
-    ax.axhline(y=sep_y, color='gray', linestyle='-', alpha=0.5, linewidth=1)
+    sep_x = (labels_positions[i-1] + labels_positions[i]) / 2
+    ax1.axvline(x=sep_x, color='gray', linestyle='-', alpha=0.5, linewidth=1)
 
-# Improve layout
+# Increase tick label sizes
+ax1.tick_params(axis='x', labelsize=11)
+ax1.tick_params(axis='y', labelsize=11)
+
 plt.tight_layout()
-
-# Show the plot
 plt.show()
 
-
-# Save the plot
-plt.savefig('gnn_training_time_improvement_ratio_modified.png', dpi=300, bbox_inches='tight', 
+# Save Figure 1
+plt.savefig('pruning_aia_over_pruning.png', dpi=300, bbox_inches='tight', 
             facecolor='white', edgecolor='none')
-plt.savefig('gnn_training_time_improvement_ratio_modified.pdf', bbox_inches='tight', 
+plt.savefig('pruning_aia_over_pruning.pdf', bbox_inches='tight', 
+            facecolor='white', edgecolor='none')
+
+# Figure 2: Pruning+AIA over Baseline
+fig2, ax2 = plt.subplots(figsize=(14, 8))
+
+# Plot bars for Pruning+AIA over Baseline
+x_pos_idx = 0
+
+for i, dataset in enumerate(datasets):
+    for j, model in enumerate(models):
+        row = df[(df['Dataset'] == dataset) & (df['Model'] == model)]
+        value = row['PruningAIA_over_Baseline'].iloc[0]
+        
+        x_pos = x_positions[x_pos_idx]
+        bar = ax2.bar(x_pos, value, bar_width, color=colors_models[j], 
+                     label=model if i == 0 else "", 
+                     alpha=0.8, edgecolor='black', linewidth=0.5)
+        
+        # Add value labels on top of bars
+        ax2.text(x_pos, value + 1, f'{value:.1f}%', ha='center', va='bottom', 
+               fontsize=11, fontweight='bold')
+        
+        x_pos_idx += 1
+
+# Customize Figure 2
+ax2.set_ylabel('Performance Improvement (%)', fontsize=14, fontweight='bold')
+ax2.set_xlabel('Dataset', fontsize=14, fontweight='bold')
+ax2.set_title('Pruning+AIA Improvement over Baseline\nAcross Datasets and Models', 
+             fontsize=16, fontweight='bold', pad=20)
+
+# Set x-axis labels
+ax2.set_xticks(labels_positions)
+ax2.set_xticklabels(datasets, fontsize=12, fontweight='bold')
+
+# Add legend
+ax2.legend(loc='upper right', fontsize=12, framealpha=0.9, title='Model')
+
+# Add grid
+ax2.grid(True, axis='y', alpha=0.3, linestyle='--')
+
+# Set y-axis limits
+max_val2 = df['PruningAIA_over_Baseline'].max()
+ax2.set_ylim(0, max_val2 * 1.15)
+
+# Add vertical lines to separate datasets
+for i in range(1, len(datasets)):
+    sep_x = (labels_positions[i-1] + labels_positions[i]) / 2
+    ax2.axvline(x=sep_x, color='gray', linestyle='-', alpha=0.5, linewidth=1)
+
+# Increase tick label sizes
+ax2.tick_params(axis='x', labelsize=11)
+ax2.tick_params(axis='y', labelsize=11)
+
+plt.tight_layout()
+plt.show()
+
+# Save Figure 2
+plt.savefig('pruning_aia_over_baseline.png', dpi=300, bbox_inches='tight', 
+            facecolor='white', edgecolor='none')
+plt.savefig('pruning_aia_over_baseline.pdf', bbox_inches='tight', 
             facecolor='white', edgecolor='none')
 
 # Print detailed comparison table
-print("\nPruning+AIA Improvement Percentage Analysis:")
-print("="*100)
-print(f"{'Dataset':<10} {'Model':<6} {'Pruning+AIA over':<18} {'Pruning+AIA over':<18} {'Difference':<15}")
-print(f"{'':^10} {'':^6} {'Pruning (%)':<18} {'Baseline (%)':<18} {'(Baseline-Pruning)':<15}")
-print("="*100)
+print("\nPruning+AIA Improvement Analysis - Two Separate Comparisons:")
+print("="*80)
+print(f"{'Dataset':<10} {'Model':<6} {'vs Pruning (%)':<15} {'vs Baseline (%)':<15}")
+print("="*80)
 
 for _, row in df.iterrows():
-    difference = row['PruningAIA_over_Baseline'] - row['PruningAIA_over_Pruning']
-    print(f"{row['Dataset']:<10} {row['Model']:<6} {row['PruningAIA_over_Pruning']:<18.1f} "
-          f"{row['PruningAIA_over_Baseline']:<18.1f} {difference:<15.1f}")
+    print(f"{row['Dataset']:<10} {row['Model']:<6} {row['PruningAIA_over_Pruning']:<15.1f} "
+          f"{row['PruningAIA_over_Baseline']:<15.1f}")
 
-print("\n" + "="*100)
+print("\n" + "="*80)
 print("Summary Statistics:")
 print(f"Average Pruning+AIA improvement over Pruning: {df['PruningAIA_over_Pruning'].mean():.1f}%")
 print(f"Average Pruning+AIA improvement over Baseline: {df['PruningAIA_over_Baseline'].mean():.1f}%")
-print(f"Best Pruning+AIA vs Pruning: {df.loc[df['PruningAIA_over_Pruning'].idxmax(), 'Dataset']} {df.loc[df['PruningAIA_over_Pruning'].idxmax(), 'Model']} with {df['PruningAIA_over_Pruning'].max():.1f}% improvement")
-print(f"Best Pruning+AIA vs Baseline: {df.loc[df['PruningAIA_over_Baseline'].idxmax(), 'Dataset']} {df.loc[df['PruningAIA_over_Baseline'].idxmax(), 'Model']} with {df['PruningAIA_over_Baseline'].max():.1f}% improvement")
+print(f"Best vs Pruning: {df.loc[df['PruningAIA_over_Pruning'].idxmax(), 'Dataset']} {df.loc[df['PruningAIA_over_Pruning'].idxmax(), 'Model']} ({df['PruningAIA_over_Pruning'].max():.1f}%)")
+print(f"Best vs Baseline: {df.loc[df['PruningAIA_over_Baseline'].idxmax(), 'Dataset']} {df.loc[df['PruningAIA_over_Baseline'].idxmax(), 'Model']} ({df['PruningAIA_over_Baseline'].max():.1f}%)")
