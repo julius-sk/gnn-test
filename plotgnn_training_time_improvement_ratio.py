@@ -85,45 +85,44 @@ for i, dataset in enumerate(datasets):
         x_pos_idx += n_conditions
 
 # Customize the plot with larger fonts
-ax.set_ylabel('Performance Improvement (%)', fontsize=16, fontweight='bold')
-ax.set_xlabel('Dataset and Model', fontsize=16, fontweight='bold')
+ax.set_xlabel('Performance Improvement (%)', fontsize=16, fontweight='bold')
+ax.set_ylabel('Dataset and Model', fontsize=16, fontweight='bold')
 ax.set_title('GNN Training Time Improvement Ratio Comparison\nAcross Datasets and Models', 
              fontsize=18, fontweight='bold', pad=25)
 
-# Set x-axis labels - only show model names
-ax.set_xticks(labels_positions)
-ax.set_xticklabels(dataset_labels, fontsize=12)
+# Set y-axis labels - only show model names
+ax.set_yticks(labels_positions)
+ax.set_yticklabels(dataset_labels, fontsize=12)
 
 # Add legend in top right with larger font
-ax.legend(loc='upper right', fontsize=14, framealpha=0.9)
+ax.legend(loc='lower right', fontsize=14, framealpha=0.9)
 
 # Add grid for better readability
-ax.grid(True, axis='y', alpha=0.3, linestyle='--')
+ax.grid(True, axis='x', alpha=0.3, linestyle='--')
 
-# Set y-axis limits with more space
+# Set x-axis limits with more space
 max_improvement = max(df['PruningAIA_over_Baseline'].max(), df['PruningAIA_over_Pruning'].max())
-ax.set_ylim(0, max_improvement * 1.2)
+ax.set_xlim(0, max_improvement * 1.2)
 
-# Add horizontal line at 0% for reference
-ax.axhline(y=0, color='black', linestyle='-', alpha=0.8, linewidth=1)
+# Add vertical line at 0% for reference
+ax.axvline(x=0, color='black', linestyle='-', alpha=0.8, linewidth=1)
 
-# Add vertical lines to separate datasets
+# Add horizontal lines to separate datasets
 for i in range(1, len(datasets)):
-    sep_x = (labels_positions[(i-1)*3 + 2] + labels_positions[i*3]) / 2
-    ax.axvline(x=sep_x, color='gray', linestyle='-', alpha=0.5, linewidth=1)
+    sep_y = (labels_positions[(i-1)*3 + 2] + labels_positions[i*3]) / 2
+    ax.axhline(y=sep_y, color='gray', linestyle='-', alpha=0.5, linewidth=1)
 
-# Add dataset labels at the top - only once per dataset
+# Add dataset labels on the left - only once per dataset
 dataset_centers = [1, 4, 7, 10]  # Center of each group of 3 models
-max_y = max_improvement * 1.15
 for i, (center_idx, dataset) in enumerate(zip(dataset_centers, datasets)):
-    center_x = labels_positions[center_idx]
-    ax.text(center_x, max_y, dataset, ha='center', va='center',
+    center_y = labels_positions[center_idx]
+    ax.text(-max_improvement * 0.08, center_y, dataset, ha='right', va='center',
             fontsize=14, fontweight='bold', 
             bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8))
 
 # Increase tick label sizes
-ax.tick_params(axis='x', labelsize=12)
 ax.tick_params(axis='y', labelsize=12)
+ax.tick_params(axis='x', labelsize=12)
 
 # Improve layout
 plt.tight_layout()
