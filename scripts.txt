@@ -1,0 +1,202 @@
+# AIA Presentation Script - 30 Minutes
+*Processing Near Memory for HPC and AI with HBM*
+
+---
+
+## Slide 1: Processing Near Memory for HPC and AI with HBM: AIA (1 minute)
+
+Good morning everyone,I am Shiju Li, today I'm presenting Sk hynix work on Processing Near Memory for HPC and AI with HBM, specifically our AIA approach which stands for Accelerate Indirect memory Access
+
+We're going to explore a revolutionary approach to handling one of the most challenging problems in modern computing, which is the performance penalty associated with sparse data structures and indirect memory access patterns that are everywhere in both high-performance computing and artificial intelligence applications
+
+---
+
+## Slide 2: The Sparsity Challenge: Unlocking Performance in AI and HPC (2 minutes)
+
+Let me start by establishing the fundamental challenge we're addressing here
+
+The problem is simple, data in the real world is sparse, and this affects multiple critical computing domains including HPC Physics Simulations with unstructured meshes, Sparse Linear Algebra operations like SpMV SpMM SpGEMM, Graph applications including BFS PageRank SSSP, and AI applications particularly LLMs and Graph Neural Networks
+
+Now here's why sparsity hurts performance, the core issue is irregular memory access patterns which create this vicious cycle of inefficiency where big cache miss ratios lead to wasted memory bandwidth, memory bandwidth gets wasted causing execution units to stall, and execution units stall creating bottlenecks that traditional architectures just can't address effectively
+
+---
+
+## Slide 3: Processing Near Memory for HPC and AI with HBM (30 seconds)
+
+This brings us to our solution approach which is Processing Near Memory for HPC and AI applications using High Bandwidth Memory technology
+
+---
+
+## Slide 4: Challenge of Sparsity for HPC Application (3 minutes)
+
+Now let's examine a specific real-world example, here we see UME which is a C plus plus 20 proxy based on a large computational physics application that approximates memory layout and indexing of an unstructured mesh
+
+The key insight is that a significant 52 percent of execution time is spent on memory operations due to unstructured mesh operations, and we want to move only the data we need for computation
+
+The computation extracts an important computational kernel with 7 computation loops with indirect memory accesses at 1 or 2 levels of indirections, looking at the instruction breakdown we have Load operations taking 18 percent with over 6 billion instructions, Branching taking 16 percent with over 6 billion instructions, Integer Add taking 14 percent with over 5 billion instructions, and Array Indexing taking 13 percent with almost 5 billion instructions
+
+The visualization shows the progression from Points to Corners to Zones through Point-to-Corners Connectivity Array and Corner-to-Zone Connectivity Array, each requiring indirect memory access patterns that are unpredictable and difficult to optimize
+
+---
+
+## Slide 5: Indirect (Irregular) Memory Access (2 minutes)
+
+Here's the fundamental problem we're solving, traditional indirect memory access requires multiple sequential steps
+
+First we access the index array C[i] to retrieve an index value, then we use that index to access B[C[0]] requiring a second memory operation, finally we use that result to access our data array A[B[C[0]]]
+
+Each step demands a separate memory transaction and the CPU must wait for each level of indirection to complete before proceeding, this creates significant latency and bandwidth waste
+
+Our AIA approach handles these indirect access patterns much more efficiently by processing them closer to memory dramatically reducing round trips between processor and memory subsystem, as you can see in the diagram the CPU sends index 0 and gets back the final data A[B[C[0]]] in one optimized operation
+
+---
+
+## Slide 6: AIA - HBM (with Los Alamos National Lab.) (3 minutes)
+
+Let me present our collaboration with Los Alamos National Laboratory on integrating AIA with High Bandwidth Memory, representing the cutting edge of our research
+
+The key innovation is irregular memory access in parallel using multiple processing units and DRAM channels efficiently, only the resulting data is delivered which reduces data movement between processor and memory
+
+In conventional memory systems the CPU must make multiple sequential requests to memory for each indirect access pattern, but with our AIA prototype using HBM we handle these patterns much more efficiently through near-memory processing
+
+The right side shows our HBM controller with integrated AIA functionality, instead of the CPU issuing multiple memory requests it issues a single AIA request that gets processed near the memory with only the resulting data delivered back to the processor
+
+This approach dramatically reduces data movement between processor and memory providing critical advantages for both performance and energy efficiency in large-scale systems
+
+---
+
+## Slide 7: Performance Benefit for UME w/ AIA (2 minutes)
+
+Let me show you the dramatic results we achieve with our UME HPC application, the performance improvement is substantial, we're seeing a 164 percent improvement when scaling from 1 thread to 2 threads with AIA integration
+
+Our technical specifications include a Dual-core Arm Cortex A72 CPU, HBM memory with total 32GB and 4GB used, and the HPC workload is UME Unstructured Mesh Explorations with number of points 1024 times 1024, number of local points 1024 times 1024, number of local corners 8 times 1024 times 1024, and number of local zones 1024 times 1024
+
+The baseline UME application shows good scaling but UME with AIA demonstrates exceptional scaling characteristics, this isn't just about parallel processing, it's about how AIA enables much more efficient use of memory bandwidth and processing resources for irregular access patterns
+
+---
+
+## Slide 8: Sparse Linear Algebra (30 seconds)
+
+This brings us to the broader domain of sparse linear algebra operations which form the computational backbone of both our HPC and AI applications
+
+---
+
+## Slide 9: Sparse Matrix Multiplication and AI (2 minutes)
+
+Let's examine how sparse matrix multiplication fits into the AI landscape, pruning-based sparse models require accelerated sparse matrix multiplication performance, and specialized gather functions in sparse operations are essential for practical deployment
+
+The transformation process shows before pruning we have dense models with fully connected networks requiring traditional dense matrix operations, after pruning we have sparse models that need specialized hardware support to maintain performance
+
+The key applications include efficient sparse models that reduce computational requirements and models that deal with many modalities requiring specialized hardware for scatter gather operations in sparse computations
+
+The challenge is that this transition from dense to sparse isn't just about reducing model size, it fundamentally changes our computational requirements and demands new architectural approaches
+
+---
+
+## Slide 10: AIA and Sparse Matrix Multiplication (2 minutes)
+
+Here's how AIA handles sparse matrix operations at a fundamental level, the key insight is that sparse matrix multiplications use sparse format and indirect memory access but AIA dramatically optimizes this process
+
+Our core principles are capacity saving by only storing non-zero values and computing saving by only multiplying non-zero values
+
+Traditional approaches store only non-zero values for capacity saving but require complex indexing schemes to locate and multiply correct elements creating performance penalties
+
+AIA accelerates this by providing hardware support for the indirect access patterns required by sparse formats, the diagram shows how we transform from a sparse matrix through sparse data format to efficient AIA output eliminating the traditional performance penalty associated with sparse operations
+
+---
+
+## Slide 11: AIA and Sparse Matrix Multiplication on GPU (3 minutes)
+
+Now let's examine how AIA handles sparse matrix multiplication on GPU architectures with our load-balanced approach
+
+Matrix A rows are distributed across GPU blocks with intelligent mapping between GPU block IDs and matrix row IDs, traditional approaches require multiple memory accesses to resolve these mappings but AIA provides hardware acceleration for these indirect access patterns
+
+The technical process includes load balanced Matrix A row ID mapping to GPU blocks, efficient handling of Matrix A Column Index and Matrix B Column Index, and optimized data processing for Matrix A Data and Matrix B Data
+
+Notice the AIA output stages, we're not just moving raw data but providing processed results directly usable in computation, the pseudocode shows how block IDs map to row pointers and column indices efficiently
+
+This reduces computational burden on main processing units and ensures high utilization across all processing elements despite the irregular nature of sparse matrices
+
+---
+
+## Slide 12: GNN Workload: AIA+Pruning (2 minutes)
+
+Let's examine how AIA integrates with Graph Neural Network workloads specifically combining AIA with pruning techniques
+
+The forward pass shows SpGEMM with AIA processing adjacency matrices sparsified features and feature outputs through the linear layer with model weights
+
+The backward pass shows SpMM operations handle transposed adjacency matrices feature output gradients and norm calculations with model bias
+
+The key innovation is that the pruning layer creates sparsified features but instead of this creating a performance penalty our AIA approach actually leverages this sparsity for improved efficiency, the structured sparsity generated by pruning operations becomes an advantage that AIA can exploit resulting in better overall performance than dense operations
+
+The graph structure flows through the pruning layer demonstrating how AIA maintains computational efficiency even with sparse connectivity patterns
+
+---
+
+## Slide 13: AIA improvement on SPGEMM for GNN Datasets (2 minutes)
+
+Let's examine our performance results for AI applications, this chart shows AIA improvement over traditional implementations without AIA across different GNN datasets
+
+The impressive results show Reddit achieving 23 point 555 percent improvement, Flickr reaching 32 point 496 percent improvement which is the highest, Yelp delivering 26 point 543 percent improvement, and Protein showing 17 point 088 percent improvement with an average of 24 point 92 percent improvement
+
+These substantial performance gains translate directly into faster training times for researchers, reduced energy consumption for large-scale deployments, and improved computational efficiency for real-world AI applications
+
+The consistency across different datasets demonstrates that AIA provides robust benefits regardless of specific graph characteristics or dataset properties
+
+---
+
+## Slide 14: Pruning Impact on Accuracy (2 minutes)
+
+This is a crucial validation of our approach, the chart shows accuracy changes when applying pruning at a 6 point 25 percent rate across different neural network models GCN GIN and SAGE on various datasets
+
+The key findings show the GIN model has remarkable improvements with plus 8 point 1 percent on Reddit plus 2 point 2 percent on Flickr and plus 24 point 9 percent on Proteins, the SAGE model shows positive results with plus 4 point 9 percent on Proteins, and the GCN model generally maintains baseline performance
+
+The critical insight is that pruning often maintains or even improves accuracy while creating opportunities for our AIA approach, this creates a win-win scenario with better accuracy with sparser models and better performance through AIA acceleration of the resulting sparse operations
+
+This validates that our performance improvements don't come at the cost of model quality, in fact they often enhance it
+
+---
+
+## Slide 15: GNN Training Time Comparison (2 minutes)
+
+This comprehensive comparison shows training time performance across all our test configurations with three approaches for each dataset, baseline in red, pruning in blue, and pruning plus AIA in green
+
+The key observations show pruning alone provides some improvement over baseline across all datasets, pruning plus AIA delivers substantial additional benefits beyond pruning alone, the Flickr dataset shows the most dramatic improvements when AIA is applied, and there's consistency across different model types GCN GIN and SAGE demonstrating robust performance
+
+The practical impact is that the reductions in training time are significant for researchers working with large-scale experiments, these improvements compound over long training runs often making the difference between feasible and infeasible research timelines for complex models
+
+---
+
+## Slide 16: AIA Speedup on GNN Training (2 minutes)
+
+Our detailed training results show the pruning plus AIA training speedup over pruning across all tested configurations demonstrating that AIA provides additional benefits beyond pruning alone
+
+The specific performance gains include Reddit with approximately 19 percent improvement, Protein with approximately 13 percent improvement, Flickr with up to 30 percent improvement, and Yelp with approximately 25 percent improvement, averaging 21 point 4 percent improvement for training operations
+
+These improvements represent substantial time savings for researchers and practitioners, for long training runs on large datasets this can mean the difference between experiments completing in days versus weeks enabling more rapid iteration and discovery
+
+The consistency across different models GCN GIN and SAGE proves that AIA benefits are not dependent on specific architectural choices
+
+---
+
+## Slide 17: Summary (3 minutes)
+
+To summarize our key contributions and findings
+
+First key point, AI and HPC requires increasingly higher bandwidth and higher capacity memory, sparse data increases the complexity of data processing and needs more memory space, so we are researching various technologies to improve memory bandwidth and usage with HBM
+
+Second key point, our AIA approach for Processing Near Memory with HBM can alleviate memory bottleneck issues, AIA with HBM shows significant performance improvements for both AI and HPC applications
+
+Third key point, we've demonstrated consistent performance gains ranging from 17 percent to over 32 percent across diverse workloads and datasets with training speedups averaging 21 point 4 percent
+
+Fourth key point, pruning with AIA not only maintains model accuracy but often improves it creating a true win-win scenario
+
+Looking forward, AIA needs to expand its application domain to become a more general technology, we are looking for more AIA functions which are simpler more general but powerful, and we are looking for more examples of how AIA improves performance for HPC and AI training and inferencing
+
+The future of high-performance computing increasingly depends on our ability to handle sparse irregular data efficiently, AIA represents a significant breakthrough in making sparse operations as efficient as dense operations enabling new possibilities for both AI and scientific computing applications
+
+Thank you for your attention, I'm happy to take questions about any aspect of our AIA approach technical implementation details or potential applications to your specific use cases
+
+---
+
+*Total estimated time: 30 minutes*
