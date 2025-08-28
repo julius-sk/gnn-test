@@ -31,8 +31,9 @@ def load_and_convert_papers100m_simple():
     dst = np.concatenate([edge_index[1], edge_index[0]])
     data = np.ones(len(src), dtype=np.float32)
     
-    # COO -> CSR
+    # COO -> CSR with duplicate removal
     coo_matrix = sp.coo_matrix((data, (src, dst)), shape=(num_nodes, num_nodes))
+    coo_matrix.sum_duplicates()  # Remove duplicate edges
     csr_matrix = coo_matrix.tocsr()
     
     # Check if we need int64 for large matrices
